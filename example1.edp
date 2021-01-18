@@ -1,0 +1,36 @@
+//Example to solve the Poisson equation using the PETSc solver.
+//This is almost a repetition of the PETSc Plugin tutorials of FreeFem. https://github.com/FreeFem/FreeFem-sources/blob/develop/examples/hpddm
+//With comments to illustrate what each 
+
+verbosity=0;
+load "PETSc"
+macro dimension 2 //EOM"
+include "macro_ddm.idp" //Has domain decomposition macros
+
+func Pk=P1;
+
+//Build a simple circle domain.
+border upper(t=0,pi){x=cos(t); y=sin(t); label=1;};
+border lower(t=pi,2*pi){x=cos(t); y=sin(t); label=2;};
+mesh Th=buildmesh(upper(100)+lower(100));
+if(mpirank==0)
+    cout<<"Initial Mesh Size [IMS] = "<<Th.nv<<endl;
+
+
+Mat A; //Distributed PETSc matrix. Matrix<> is a real/complex valued sparse matrix.
+createMat(Th,A,Pk); //Create Distributed Mesh and PETSc Mat Operator.
+
+fespace Vh(Th,Pk);  //The local finite element space. Differs in each processor.
+Vh u;
+u[]=0:Vh.ndof-1; //Contains the local PETSc local-dof numbers
+cout<<"Max of local dof numbering = "<<u[].max<<endl;
+
+//---------
+globalNumbering(A,u[]); //Convert to global numbering.
+//---------
+
+int maxdofs=u[].max; //Get the maximum global dof number inside the processor
+int maxdofsGlobal;
+mpiAllReduce(maxdofs,maxdofsGlobal,mpiCommWorld,mpiMAX); //Maximum of all the processors. Should be equal to Th.nv-1.
+if(mpirank==0)
+    cout<<"Max of global dof numbering (should be equal to IMS-1) = "<<maxdofsGlobal<<endl;

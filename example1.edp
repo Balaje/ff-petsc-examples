@@ -1,6 +1,5 @@
-//Example to solve the Poisson equation using the PETSc solver.
 //This is almost a repetition of the PETSc Plugin tutorials of FreeFem. https://github.com/FreeFem/FreeFem-sources/blob/develop/examples/hpddm
-//With comments to illustrate what each 
+//With comments to illustrate what each line does.
 
 verbosity=0;
 load "PETSc"

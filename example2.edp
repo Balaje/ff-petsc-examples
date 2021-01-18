@@ -1,0 +1,47 @@
+//Example to solve the Poisson equation using FEM and PETSc.
+verbosity=0.;
+load "PETSc"
+macro dimension 2//EOM"
+include "macro_ddm.idp"
+macro grad(u)[dx(u),dy(u)]//EOM"
+func Pk=P1;
+border upper(t=0,pi){x=cos(t); y=sin(t); label=1;};
+border lower(t=pi,2*pi){x=cos(t); y=sin(t); label=2;};
+mesh Th=buildmesh(upper(100)+lower(100));
+Mat A;
+createMat(Th,A,Pk);
+
+fespace Vh(Th,Pk);
+varf vPb(u,v)=intN(Th)(grad(u)'*grad(v)) + intN(Th)(v) + on(2,u=0);
+matrix Loc=vPb(Vh,Vh,tgv=1e30);//Local sparse Matrix of real type. This will be set in A, which is a PETSc Matrix (Mat).
+real[int] b=vPb(0,Vh,tgv=1e30); //Local rhs vector.
+
+A = Loc;
+
+Vh u;
+set(A,sparams="-pc_type gamg -ksp_type minres"); //Here the problem is solved using the default solver which is the GMRES. The KSP solver can be set using
+                                                         // -ksp_type [gmres] (GMRES)
+                                                         // -pc_type [bjacobi] (Block Jacobi)
+u[]=A^-1*b; //The A^-1*b operation is the solution of the linear system. Various parameters can be specified via the sparams variable.
+            //This contains the local information.
+if(mpirank==0)
+    cout<<"Using A^-1*b: "<<u[].min<<endl;
+
+
+real[int] r=A*u[]; //This contains the local information for 'r'.
+exchange(A,b,scaled=true); //Exchange for consistency in the overlap.
+r-=b; //Subtract the residual from Global RHS.
+r*=-1;
+Vh v;
+v[]=r;
+if(mpirank==0)
+    cout<<"Residual: "<<v[].min<<" "<<v[].max<<endl; //Should be close to zero
+
+
+real[int] bPETSc, xPETSc;
+ChangeNumbering(A,b,bPETSc); //Change Numbering from Normal vector to PETSc vector (bPETSc). To be used by the Krylov Solver.
+xPETSc.resize(bPETSc.n); //Resize the solution vector. 
+KSPSolve(A,bPETSc,xPETSc); //Using the KSP Solve Routine from PETSc. The solution is stored in xPETSc;
+ChangeNumbering(A,u[],xPETSc,inverse=true,exchange=true); //Change from PETSc vector to normal vector.
+if(mpirank==0)
+    cout<<"Using KSPSolve(): "<<u[].min<<endl; //Should match the first line.    

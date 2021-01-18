@@ -23,3 +23,7 @@ I will keep updating the details of the various example scripts below:
    Numbering and the global numbering and how to obtain them. The
    example also demonstrates the routine to perform the distribution
    of the meshes among the various processes.
+
+2. `example2.edp`: An example to solve the Poisson equation using the
+   Krylov solvers. Also contains another method to solve the problem
+   using the `KSPSolve()` routine of the PETSc library.

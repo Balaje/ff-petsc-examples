@@ -1,0 +1,37 @@
+//Example to set the different preconditioners
+//This example can be used to test the different preconditioners and the solvers.
+//---> For Preconditioner details, refer : https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCType.html
+//---> For Solver details, refer: https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPType.html
+
+load "PETSc"
+macro dimension 2//EOM"
+include "macro_ddm.idp"
+macro grad(u)[dx(u),dy(u)]//EOM"
+load "Element_P3" //Load the P3 element.
+func Pk=P1;
+border upper(t=0,pi){x=cos(t); y=sin(t); label=1;};
+border lower(t=pi,2*pi){x=cos(t); y=sin(t); label=2;};
+mesh Th=buildmesh(upper(100)+lower(100));
+Mat A;
+createMat(Th,A,Pk);
+
+fespace Vh(Th,Pk); //Local FESpace.
+varf vPb(u,v)=intN(Th)(grad(u)'*grad(v)) + intN(Th)(v) + on(2,u=0); //variational form
+matrix Loc=vPb(Vh,Vh,tgv=-2); //Get Local Sparse stiffness matrix. Symmetric Elimination 
+real[int] b=vPb(0,Vh,tgv=-1); //Get Local RHS vector.
+
+A=Loc; //Set the Local matrix to the PETSc matrix.
+
+Vh u;//Solution on the mesh.
+set(A,sparams="-pc_type cholesky -ksp_type bcgs -ksp_converged_reason"); //Preconditioner: Cholesky Factorization. Krylov Solver: Bi-Conjugate Gradient STAB
+ObjectView(A,object="ksp");
+u[]=A^-1*b;
+
+cout<<"---------------------------------"<<endl;
+
+set(A,sparams="-pc_type gamg -ksp_type gmres"); //GMRES Solver with the Geometric Algebraic Multigrid Preconditioner.
+
+u[]=0; //Initial guess.
+u[]=A^-1*b;
+ObjectView(A,object="ksp");
+

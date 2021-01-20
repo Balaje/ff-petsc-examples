@@ -1,0 +1,27 @@
+load "PETSc"
+macro dimension 2//EOM"
+include "macro_ddm.idp"
+macro grad(u)[dx(u),dy(u)]//EOM"
+load "Element_P3"
+func Pk=P1;
+mesh Th=square(getARGV("-N",30),getARGV("-N",30));
+Mat A;
+createMat(Th,A,Pk);
+
+fespace Vh(Th,Pk);
+func f=2*pi^2*sin(pi*x)*sin(pi*y);
+varf vPb(u,v)=intN(Th)(grad(u)'*grad(v)) + intN(Th)(f*v) + on(1,2,3,4,u=0);
+matrix Loc=vPb(Vh,Vh,tgv=-2); //Get Local Sparse stiffness matrix. Symmetric elimination
+real[int] b=vPb(0,Vh,tgv=-1); //Get Local RHS vector.
+
+A=Loc;
+
+Vh u;
+set(A,sparams="-pc_type gamg -ksp_type minres");
+u[]=A^-1*b;
+
+Vh ue=sin(pi*x)*sin(pi*y);
+ue=u-ue;
+real res=sqrt(intN(Th)(ue^2));
+if(mpirank==0)
+    cout<<"Error in solution = "<<res<<endl;

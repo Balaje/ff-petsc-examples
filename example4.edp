@@ -1,0 +1,64 @@
+//Program to solve the Liouville Bratu Gelfand Equation using the Newton Raphson method.
+//Solved using the PETSc solver. example4_seq.edp contains the sequential implementation
+
+load "PETSc"
+load "iovtk"
+macro dimension 2//EOM
+macro grad(u)[dx(u),dy(u)]//EOM"
+include "macro_ddm.idp"
+real c=6.25; //Parameter for the Liouville - Bratu - Gelfand equation
+int N1=getARGV("-N1",20);
+mesh M;
+{
+    border a(t=0,1){x=t; y=0; label=1;};
+    border b(t=0,1){x=1; y=t; label=1;};
+    border c(t=0,1){x=1-t; y=1; label=1;};
+    border d(t=0,1){x=0; y=1-t; label=1;};
+    M=buildmesh(a(N1)+b(N1)+c(N1)+d(N1));
+}
+
+load "Element_P3"
+func Pk=P3;
+Mat J; //PETSc Matrix for the Jacobian
+createMat(M,J,Pk);
+fespace Vh(M,Pk); //Local FESpace.
+Vh u;
+func BC = cos(pi*x)*cos(pi*y);
+varf vInit(w,v)=on(1,w=BC);
+varf vJ(w,v) = intN(M)(grad(w)'*grad(v) - c*exp(u)*w*v) + on(1,w=0); //The Differential part (Jacobian).
+varf vRes(w,v) = intN(M)(grad(u)'*grad(v) - c*exp(u)*v) + on(1,w=u); //The Residual.
+int it=20; //Number of Newton--Raphson iteration
+real tol=1e-6; //Tolerance criterion
+u[]=vInit(0,Vh,tgv=-1); //Initial condition with boundary values alone.
+/*
+  To implement Dirichlet boundary conditions
+  A note about tgv ("très grande valeur" or very high value) here:  I was using tgv=1e+30 for all the cases.
+  Turns out that tgv should be set to be
+  = -1 for nonsymm. elimination
+  = -2 for symm. elimination.
+  = 1e+30 for penalization.
+*/
+
+real[int] b=u[];//Boundary value alone.
+//set(J,sparams="-ksp_type gmres -pc_type bjacobi"); //This is the default when nothing is set.
+string pctype=getARGV("-pctype","gamg");
+set(J,sparams="-ksp_type gmres -pc_type "+pctype);
+//set(J,sparams="-ksp_view");
+real maxtime;
+for(int i=1; i<it; i++)
+ {
+     real[int] v=vRes(0,Vh,tgv=-1); //Get the residual
+     v-=b;
+     real res=sqrt(J(v,v)); //This is mysterious. Is it the l2 innerproduct of the vector on the Distributed Mesh?
+     if(res < tol)
+         break;
+     matrix Loc=vJ(Vh,Vh,tgv=-2);   //Get the Jacobian matrix (sparse).
+     J=Loc; //Transfer it to PETSc Matrix.
+     real cpu=mpiWtime();
+     real[int] inc=J^-1*v; //The Increment.
+     real ttaken=mpiWtime()-cpu;     
+     mpiAllReduce(ttaken,maxtime,mpiCommWorld,mpiMAX);
+     u[]-=inc;
+ }
+if(mpirank==0)
+    cout<<N1<<"\t"<<maxtime<<endl; //Print the time taken for the last solve.

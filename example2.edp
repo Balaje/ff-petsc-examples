@@ -13,8 +13,8 @@ createMat(Th,A,Pk);
 
 fespace Vh(Th,Pk);
 varf vPb(u,v)=intN(Th)(grad(u)'*grad(v)) + intN(Th)(v) + on(2,u=0);
-matrix Loc=vPb(Vh,Vh,tgv=1e30);//Local sparse Matrix of real type. This will be set in A, which is a PETSc Matrix (Mat).
-real[int] b=vPb(0,Vh,tgv=1e30); //Local rhs vector.
+matrix Loc=vPb(Vh,Vh,tgv=-2);//Local sparse Matrix of real type. This will be set in A, which is a PETSc Matrix (Mat).
+real[int] b=vPb(0,Vh,tgv=-1); //Local rhs vector.
 
 A = Loc;
 

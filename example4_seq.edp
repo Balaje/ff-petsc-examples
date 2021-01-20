@@ -1,0 +1,40 @@
+//Same as example4.edp but in sequential form.
+include "getARGV.idp"
+macro grad(u)[dx(u),dy(u)]//EOM"
+real c=6.25;
+int N1=getARGV("-N1",20);
+mesh M;
+{
+    border a(t=0,1){x=t; y=0; label=1;};
+    border b(t=0,1){x=1; y=t; label=1;};
+    border c(t=0,1){x=1-t; y=1; label=1;};
+    border d(t=0,1){x=0; y=1-t; label=1;};
+    M=buildmesh(a(N1)+b(N1)+c(N1)+d(N1));
+}
+load "Element_P3"
+func Pk=P3;
+fespace Vh(M,Pk);
+Vh u;
+func BC = cos(pi*x)*cos(pi*y);
+varf vInit(w,v)=on(1,w=BC);
+varf vJ(w,v) = int2d(M)(grad(w)'*grad(v) - c*exp(u)*w*v) + on(1,w=0); 
+varf vRes(w,v) = int2d(M)(grad(u)'*grad(v) - c*exp(u)*v) + on(1,w=u); 
+int it=20; //Number of Newton--Raphson iteration
+real tol=1e-6; //Tolerance criterion
+u[]=vInit(0,Vh,tgv=-1); //Initial condition with boundary values alone.
+real[int] b=u[];
+real time;
+for(int i=1; i<it; i++)
+{
+    real[int] v=vRes(0,Vh,tgv=-1);
+    v-=b;
+    real res=sqrt(v'*v);    
+    if(res < tol)
+        break;
+    matrix J = vJ(Vh,Vh,tgv=-2);
+    real cpu=clock();
+    real[int] inc=J^-1*v;
+    time=clock()-cpu;
+    u[]-=inc;   
+}
+cout<<N1<<"\t"<<time<<endl;

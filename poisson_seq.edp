@@ -1,0 +1,17 @@
+//Program to solve Poisson equation in series
+include "getARGV.idp"
+macro grad(u)[dx(u),dy(u)]//EOM"
+func Pk=P1;
+mesh Th=square(getARGV("-N",30),getARGV("-N",30));
+fespace Vh(Th,Pk);
+func f=2*pi^2*sin(pi*x)*sin(pi*y);
+varf vPb(u,v)=int2d(Th)(grad(u)'*grad(v)) + int2d(Th)(f*v) + on(1,2,3,4,u=0);
+matrix A=vPb(Vh,Vh,tgv=-2); //Get Local Sparse stiffness matrix. Symmetric elimination
+real[int] b=vPb(0,Vh,tgv=-1); //Get Local RHS vector.
+Vh u;
+set(A,solver=sparsesolver);//Default is MUMPS
+u[]=A^-1*b;
+Vh ue=sin(pi*x)*sin(pi*y);
+ue=u-ue;
+real res=sqrt(int2d(Th)(ue^2));
+cout<<"Error in solution = "<<res<<endl;

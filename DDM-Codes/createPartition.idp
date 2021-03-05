@@ -1,0 +1,65 @@
+//Script file to generate the restriction operators and the partition of unity matrices.
+/*
+NOTE: 
+There is a function here known as AddLayers. 
+The book mentions that one need not know the use of this function to understand the problem.
+So I won't be adding any comments to the routine there.
+
+*/
+func bool SubdomainsPartitionUnity(mesh &Th, real[int] &partdof, int sizeoverlaps, mesh[int] &aTh, matrix[int] &Rih, matrix[int] &Dih, int[int] &Ndeg, real[int] &AreaThi)
+{
+    int npart=partdof.max+1;
+    mesh Thi=Th;
+    fespace Vhi(Thi,P1);
+    Vhi[int] pun(npart); //local fem functions
+    Vh sun=0, unssd=0;
+    Ph part;
+    part[]=partdof; //This is the partition obtained from the decomp.idp
+    for(int i=0; i<npart; ++i)
+    {
+        Ph suppi=abs(part-i)<0.1; //boolean 1 in the subdomain 0 elsewhere
+        AddLayers(Th,suppi[],sizeoverlaps,unssd[]); //Mysterious function (Overlap partitions by adding layers)
+        Thi=aTh[i]=trunc(Th,suppi>0,label=10,split=1); //Label overlapping mesh interface as 10.        
+        //[NOTE: So statements like a=b=c works in FreeFem].
+        
+        Rih[i]=interpolate(Vhi,Vh,inside=1); //Simple restriction operator.
+        
+        pun[i][]=Rih[i]*unssd[];
+        pun[i][]=1.;// a garder par la suite (means to keep later in French)
+        sun[]+=Rih[i]'*pun[i][];
+        Ndeg[i]=Vhi.ndof;
+        AreaThi[i]=int2d(Thi)(1.);
+    }
+    for(int i=0; i<npart; ++i)
+    {
+        Thi=aTh[i];
+        pun[i]=pun[i]/sun; //sun is "sum of unity" pun is "partition of unity" (Normalizing here).
+        Dih[i]=pun[i][]; //diagonal matrix built from vector.
+    }
+    return true;
+}
+
+//This function tries to buidl the partition of unity matrix somehow. The choice of partition of unity is not unique.
+func bool AddLayers(mesh &Th, real[int] &ssd, int n, real[int] &unssd)
+{
+    Ph s;
+    assert(ssd.n==Ph.ndof);
+    assert(unssd.n==Vh.ndof);
+    unssd=0;
+    s[]=ssd;
+    Vh u;
+    varf vM(uu,v)=int2d(Th,qforder=1)(uu*v/area);
+    matrix M=vM(Ph,Vh);
+    for(int i=0; i<n; ++i)
+    {
+        u[]=M*s[];
+        u=u>.1;
+        unssd+=u[];
+        s[]=M'*u[];
+        s=s>0.1;
+    }
+    unssd/=n;
+    u[]=unssd;
+    ssd=s[];
+    return true;
+}

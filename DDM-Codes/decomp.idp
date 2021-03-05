@@ -1,0 +1,11 @@
+if(withmetis)
+{
+    metisdual(lpart,Th,npart);
+    for(int i=0; i<lpart.n; ++i)
+        part[][i]=lpart[i];    
+}
+else
+{
+    Ph xx=x, yy=y;   
+    part = int(xx/allong*nn)*mm + int(yy*mm);
+}

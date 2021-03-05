@@ -1,0 +1,38 @@
+//EDP file containing the data structures of the Schwarz Algorithms
+load "metis" //Mesh partitioner
+load "medit" //Scientific visualization software
+int nn=2,mm=2; //Number of the domains in each direction
+int npart=nn*mm; //Total number of domains
+int nloc=10; //local no of dof per domain in one direction
+bool withmetis=1; //=1 (with metis) =0 (uniform decomp)
+int sizeovr=1; //Size of geometric overalp between subdomains
+real allong=real(nn)/real(mm); //Aspect ratio of the global domain
+//Mesh fo a rectangular domain
+mesh Th=square(nn*nloc,mm*nloc,[x*allong,y]);
+fespace Vh(Th,P1);
+fespace Ph(Th,P0);
+Ph part; //Piecewise constant function.
+int[int] lpart(Ph.ndof); //giving the decomposition.
+//Domain decomposition data structures.
+mesh[int] aTh(npart); //Sequence of subdomain meshes.
+matrix[int] Rih(npart); //local restriction operators.
+matrix[int] Dih(npart); //partition of unity operators. [NOTE: The partition of unity is Di s.t. Id = \sum_{i=1}^N Ri^T*Di*Ri]
+int[int] Ndeg(npart); //Number of dof of each mesh
+real[int] AreaThi(npart); //Area of each subdomain
+matrix[int] aA(npart), aN(npart); //local matrices
+Vh[int] Z(npart); //Coarse space ?? (Why so soon)
+
+//Definition of the problem to solve.
+int[int] chlab=[1,1,2,1,3,1,4,1];
+Th=change(Th,refe=chlab);
+macro grad(u)[dx(u), dy(u)]//EOM"
+    func f=1;
+func g=1;
+func eta=0;
+func kappa=1;
+Vh rhsglob,uglob;
+varf vaglobal(u,v)=int2d(Th)(eta*u*v+kappa*grad(u)'*grad(v)) + on(1,u=g) + int2d(Th)(f*v);
+matrix Aglobal;
+//Iterative parameters
+real tol=1e-7;
+int maxit=300;

@@ -12,8 +12,8 @@ made available by the FreeFem folks. This is an attempt
 to make the existing tutorials a little more detailed, attaching some
 of my own comments along with the code.
 
-** Please refer to the original tutorial
-[here](https://doc.freefem.org/documentation/petsc/index.html). **
+*Please refer to the original tutorial
+[here](https://doc.freefem.org/documentation/petsc/index.html).*
 
 I will keep updating the details of the various example scripts below:
 

@@ -1,0 +1,52 @@
+include "data.edp"
+include "decomp.idp"
+include "createPartition.idp"
+
+SubdomainsPartitionUnity(Th,part[],sizeovr,aTh,Rih,Dih,Ndeg,AreaThi); //From createPartitionUnity
+
+Aglobal=vaglobal(Vh,Vh,solver=UMFPACK); //global matrix
+rhsglob[]=vaglobal(0,Vh); //global rhs
+uglob[]=Aglobal^-1*rhsglob[];
+plot(uglob,fill=1,wait=1,dim=3,cmm="Solution using direct method");
+
+//Build the local problem matrices
+for(int i=0; i<npart; i++)
+ {
+     cout<<" Domain : "<<i<<"/"<<npart<<endl;
+     matrix aT=Aglobal*Rih[i]';
+     aA[i]=Rih[i]*aT;
+     set(aA[i],solver=UMFPACK); //Direct solvers
+ }
+
+
+//Finally the Schwarz's iteration
+ofstream filei("Conv.m");
+Vh un=0;
+Vh rn=rhsglob;
+for(int iter=0; iter<maxit; iter++)
+ {
+     real err=0, res;
+     Vh er=0;
+     for(int i=0; i<npart; i++)
+     {
+         real[int] bi=Rih[i]*rn[]; //Restricted rhs.
+         real[int] ui=aA[i]^-1*bi; //local solve.
+         bi=Dih[i]*ui;
+         er[]+=Rih[i]'*bi;
+     }
+     un[]+=er[]; //Build new iterate
+     rn[]=Aglobal*un[]; //compute global residual
+     rn[]=rn[]-rhsglob[];
+     rn[]*=-1;
+     err=sqrt(er[]'*er[]);
+     res=sqrt(rn[]'*rn[]);
+     cout<<"Iteration: "<<iter<<" Correction="<<err<<" Residual = "<<res<<endl;
+
+     plot(un,value=1,fill=1,dim=3,cmm="Approximate solution at step"+iter);
+     int j=iter+1;
+     //Store the error and the residual in Matlab form
+     filei<<"Convhist("+j+",:)=["<<err<<" "<<res<<"];"<<endl;
+     if(err<tol) break;
+ }
+filei<<"semilogy(1:length(Convhist),Convhist(:,2));"<<endl;
+plot(un,wait=1,value=1,fill=1,dim=3,cmm="Final solution");

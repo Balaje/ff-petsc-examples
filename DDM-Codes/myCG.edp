@@ -1,0 +1,79 @@
+verbosity=0.;
+include "getARGV.idp"
+mesh Th=square(getARGV("-N",20),getARGV("-N",20));
+fespace Vh(Th,P1);
+Vh uh,vh;
+macro grad(u)[dx(u),dy(u)] //EOM"
+varf vaglobal(u,v)=int2d(Th)(grad(u)'*grad(v)) + on(1,2,3,4,u=0) + int2d(Th)(1*v);
+/*
+A note on the default value of tgv. If tgv=1e30, the DBC are applied using penalization
+in the matrix. This does not work well with myCG() due to round-off errors. 
+Set tgv=-2 for symmetric elimination (to preserve symmetry of the matrix)
+ */
+matrix A=vaglobal(Vh,Vh,tgv=-2); //Symmetric Elimination
+real[int] b=vaglobal(0,Vh,tgv=-2); //Symmetric Elimination
+//Conjugate Gradient function
+func real[int] myCG(matrix A, real[int] b){
+    real[int] sol(A.n); //Solution vector
+    real[int] x0(A.n), r0(A.n), p0(A.n), q0(A.n); //Initial iterates
+    real[int] x1(A.n), r1(A.n), p1(A.n), e(A.n); //Final iterates
+    real alpha, beta, rho0, rho1; //Coefficients
+    int maxit=400, iter=0;
+    real tol=1e-8, error=1;
+    x0=10; //Ones as the initial guess
+    r0=A*x0;
+    r0=b-r0;
+    p0=r0;
+    while(iter <= maxit && error > tol){
+        rho0=r0'*r0;
+        q0=A*p0;
+        //Compute alpha
+        alpha=p0'*q0;        
+        alpha=rho0/alpha;        
+        //Build new x1, r1
+        x1=alpha*p0;
+        x1=x0+x1;
+        r1=-alpha*q0;
+        r1=r0+r1;
+        //Compute beta
+        rho1=r1'*r1;
+        beta=rho1/rho0;
+        //Build new p1;
+        p1=beta*p0;
+        p1=p1+r1;
+        //compute the error
+        e=x1-x0;
+        error=sqrt(e'*e);
+        iter+=1;
+
+        cout<<"At iteration "<<iter<<" Error = "<<error<<endl;
+        x0=x1;
+        r0=r1;
+        p0=p1;
+        //Print convergence history        
+    }
+    sol=x1;
+    return sol;
+}
+
+
+/*
+  myCG() almost always takes more time than the native solver.
+*/
+real time1=clock();
+cout<<endl<<endl;
+uh[]=myCG(A,b);
+cout<<"Time taken = "<<clock()-time1<<endl;
+plot(uh,wait=1,fill=1,value=1);
+
+//Native CG solver
+matrix A1=vaglobal(Vh,Vh,tgv=-2); //Symmetric Elimination
+real[int] b1=vaglobal(0,Vh,tgv=-2); //Symmetric Elimination
+set(A1,solver=CG);
+
+real time2=clock();
+vh[]=A1^-1*b1;
+cout<<"Time taken = "<<clock()-time2<<endl;
+
+plot(vh,wait=1,fill=1,value=1);
+cout<<"Is it correct ? "<<sqrt(int2d(Th)((uh-vh)^2))<<endl;

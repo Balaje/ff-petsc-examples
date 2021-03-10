@@ -12,6 +12,6 @@ for(int i=0; i<npart; i++)
      real[int] di=Dih[i]*bi;
      localone[]=Rih[i]'*di;
      sum[]+=localone[];
-     plot(localone,fill=1,value=1,dim=3,wait=1);
+     plot(localone,fill=1,value=1,dim=2,wait=1);
  }
-plot(sum,fill=1,value=1,dim=3,wait=1);
+plot(sum,fill=1,value=1,dim=2,wait=1);

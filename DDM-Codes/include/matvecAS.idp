@@ -1,0 +1,24 @@
+func real[int] A(real[int] &x)
+{
+    //Matrix vector product with the global matrix.
+    Vh Ax;
+    Ax[]=Aglobal*x;
+    return Ax[];
+}
+
+//and the application of the preconditioner
+func real[int] AS(real[int] &l)
+{
+    //Application of the ASM preconditioner
+    //M^{-1}*y = \sum Ri^T*Ai^{-1}*Ri*y
+    //Ri restriction operators, Ai=Ri*A*Ri^T local matrices
+
+    Vh s=0;
+    for(int i=0; i<npart; i++)
+    {
+        real[int] bi = Rih[i]*l; //Restrict RHS
+        real[int] ui=aA[i]^-1*bi; //local solves
+        s[]+=Rih[i]'*ui;
+    }
+    return s[];
+}

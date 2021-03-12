@@ -5,7 +5,7 @@ int nn=2,mm=2; //Number of the domains in each direction
 int npart=nn*mm; //Total number of domains
 int nloc=10; //local no of dof per domain in one direction
 bool withmetis=1; //=1 (with metis) =0 (uniform decomp)
-int sizeovr=1; //Size of geometric overalp between subdomains
+int sizeovr=5; //Size of geometric overalp between subdomains
 real allong=real(nn)/real(mm); //Aspect ratio of the global domain
 //Mesh fo a rectangular domain
 mesh Th=square(nn*nloc,mm*nloc,[x*allong,y]);

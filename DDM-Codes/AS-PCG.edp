@@ -1,0 +1,28 @@
+/* Obtain partition */
+include "data.edp"
+include "decomp.idp"
+include "createPartition.idp"
+SubdomainsPartitionUnity(Th,part[],sizeovr,aTh,Rih,Dih,Ndeg,AreaThi);
+/*Setup Global Matrices*/
+Aglobal=vaglobal(Vh,Vh,solver=UMFPACK); //global matrix
+rhsglob[]=vaglobal(0,Vh); //global rhs
+uglob[]=Aglobal^-1*rhsglob[];
+/*Obtain the local matrices*/
+for(int i=0; i<npart; i++)
+{
+    cout<<"Domain: "<<i<<"/"<<npart<<endl;
+    matrix aT = Aglobal*Rih[i]';
+    aA[i]=Rih[i]*aT;
+    set(aA[i],solver=UMFPACK); //Direct solvers using UMFPACK    
+}
+/*Start solving. 
+Similar to myCG.edp, compare the end with a direct solver
+*/
+include "matvecAS.idp"
+include "PCG.idp"
+Vh un=0, sol;
+cout<<"Schwarz Dirichlet Algorithm"<<endl;
+sol[]=myPCG(un[],tol,maxit);
+plot(sol,cmm="Final Solution",wait=1,dim=3,fill=1,value=1);
+Vh er=sol-uglob;
+cout<<"Final error: "<<er[].linfty<<endl;
